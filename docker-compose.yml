@@ -156,6 +156,20 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+  
+  # Adminer gehitu
+  adminer:
+    image: adminer:latest
+    container_name: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_DB_DRIVER: mysql
+    depends_on:
+      - mysql
+    networks:
+      - slurm-network
 
   # Optional Elasticsearch for job completion logging
   # Start with: docker compose --profile monitoring up -d
@@ -215,3 +229,4 @@ volumes:
 networks:
   slurm-network:
     driver: bridge
+      
