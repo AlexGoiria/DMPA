@@ -157,6 +157,58 @@ services:
       retries: 3
       start_period: 20s
   
+  # Bi nodo gehiago gehitu
+  c3:
+    image: slurm-docker-cluster:${SLURM_VERSION:-25.11.2}
+    command: ["slurmd"]
+    container_name: c3
+    hostname: c3
+    working_dir: /data
+    privileged: true
+    volumes:
+      - etc_munge:/etc/munge
+      - etc_slurm:/etc/slurm
+      - slurm_jobdir:/data
+      - var_log_slurm:/var/log/slurm
+    expose:
+      - "6818"
+    depends_on:
+      slurmctld:
+        condition: service_healthy
+    networks:
+      - slurm-network
+    healthcheck:
+      test: ["CMD-SHELL", "pidof slurmd"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  c4:
+    image: slurm-docker-cluster:${SLURM_VERSION:-25.11.2}
+    command: ["slurmd"]
+    container_name: c4
+    hostname: c4
+    working_dir: /data
+    privileged: true
+    volumes:
+      - etc_munge:/etc/munge
+      - etc_slurm:/etc/slurm
+      - slurm_jobdir:/data
+      - var_log_slurm:/var/log/slurm
+    expose:
+      - "6818"
+    depends_on:
+      slurmctld:
+        condition: service_healthy
+    networks:
+      - slurm-network
+    healthcheck:
+      test: ["CMD-SHELL", "pidof slurmd"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
   # Adminer gehitu
   adminer:
     image: adminer:latest
