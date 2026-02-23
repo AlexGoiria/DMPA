@@ -35,7 +35,7 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password}
     volumes:
       - etc_munge:/etc/munge
-      - etc_slurm:/etc/slurm
+      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf          
       - var_log_slurm:/var/log/slurm
     expose:
       - "6819"
@@ -62,7 +62,7 @@ services:
       ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-}
     volumes:
       - etc_munge:/etc/munge:z
-      - etc_slurm:/etc/slurm:z
+      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf      
       - slurm_jobdir:/data:z
       - var_log_slurm:/var/log/slurm:z
     expose:
@@ -87,7 +87,7 @@ services:
     privileged: true
     volumes:
       - etc_munge:/etc/munge
-      - etc_slurm:/etc/slurm
+      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf         
       - var_log_slurm:/var/log/slurm
     ports:
       - "6820:6820"
@@ -114,7 +114,7 @@ services:
     privileged: true
     volumes:
       - etc_munge:/etc/munge
-      - etc_slurm:/etc/slurm
+      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf        
       - slurm_jobdir:/data
       - var_log_slurm:/var/log/slurm
     expose:
@@ -140,7 +140,7 @@ services:
     privileged: true
     volumes:
       - etc_munge:/etc/munge
-      - etc_slurm:/etc/slurm
+      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf       
       - slurm_jobdir:/data
       - var_log_slurm:/var/log/slurm
     expose:
@@ -156,8 +156,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
-  
-  # Bi nodo gehiago gehitu
+
   c3:
     image: slurm-docker-cluster:${SLURM_VERSION:-25.11.2}
     command: ["slurmd"]
@@ -167,7 +166,7 @@ services:
     privileged: true
     volumes:
       - etc_munge:/etc/munge
-      - etc_slurm:/etc/slurm
+      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf         
       - slurm_jobdir:/data
       - var_log_slurm:/var/log/slurm
     expose:
@@ -193,7 +192,7 @@ services:
     privileged: true
     volumes:
       - etc_munge:/etc/munge
-      - etc_slurm:/etc/slurm
+      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf
       - slurm_jobdir:/data
       - var_log_slurm:/var/log/slurm
     expose:
@@ -209,8 +208,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
-  
-  # Adminer gehitu
+
   adminer:
     image: adminer:latest
     container_name: adminer
@@ -224,9 +222,6 @@ services:
     networks:
       - slurm-network
 
-  # Optional Elasticsearch for job completion logging
-  # Start with: docker compose --profile monitoring up -d
-  #   or with: make up-with-monitoring
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.3.0
     profiles: ["monitoring"]
@@ -249,7 +244,6 @@ services:
       retries: 5
       start_period: 30s
 
-  # Kibana for visualizing Elasticsearch job completions
   kibana:
     image: docker.elastic.co/kibana/kibana:9.3.0
     profiles: ["monitoring"]
@@ -282,4 +276,3 @@ volumes:
 networks:
   slurm-network:
     driver: bridge
-      
