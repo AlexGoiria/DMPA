@@ -1,90 +1,90 @@
 services:
-  mysql:
-    image: mariadb:12
-    hostname: mysql
-    container_name: mysql
+  mysql: # MariaDB zerbitzua, SlurmDBD-rako accounting eta ataza datuak gordetzeko
+    image: mariadb:12 # MariaDB 12 irudia erabiliko da
+    hostname: mysql # Kontainer hostname, Slurm komunikaziorako.
+    container_name: mysql # Kontainer izena, Docker-eko identifikazioa.
     environment:
-      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-slurm_acct_db}
-      MYSQL_USER: ${MYSQL_USER:-slurm}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password}
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes" # Root pasahitza automatikoki sortuko du
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-slurm_acct_db} # Sortuko den datu basea: slurm_acct_db
+      MYSQL_USER: ${MYSQL_USER:-slurm} # MariaDB erabiltzailea
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password} # Pasahitza = password.
     volumes:
-      - var_lib_mysql:/var/lib/mysql
+      - var_lib_mysql:/var/lib/mysql # MariaDB datuak gordetzeko bolumena
     networks:
-      - slurm-network
-    healthcheck:
+      - slurm-network # mysql zerbitzua slurm-network sarean egongo da
+    healthcheck: # osasun egiaztapena
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
+      interval: 10s # Egiaztapen bakoitzaren tartea
+      timeout: 5s  # Komandoaren timeout-a
+      retries: 3 # Saiakera kopurua
+      start_period: 30s # Kontainer hasierako tartea healthcheck aurretik
 
-  slurmdbd:
-    image: slurm-docker-cluster:${SLURM_VERSION:-25.11.2}
-    build:
+  slurmdbd: # Slurm Database Daemon, MariaDB erabiliz ataza eta accounting informazioa kudeatzen du.
+    image: slurm-docker-cluster:${SLURM_VERSION:-25.11.2} # SlurmDBD irudia
+    build: # eraikitzeko konfigurazioa: bertsioa, cache irudia.
       context: .
       args:
         SLURM_VERSION: ${SLURM_VERSION:-25.11.2}
       cache_from:
         - slurm-docker-cluster:${SLURM_VERSION:-25.11.2}
     command: ["slurmdbd"]
-    container_name: slurmdbd
+    container_name: slurmdbd # Kontainer izena
     hostname: slurmdbd
-    environment:
-      MYSQL_USER: ${MYSQL_USER:-slurm}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password}
-    volumes:
+    environment: # Ingurune aldagaiak
+      MYSQL_USER: ${MYSQL_USER:-slurm}  # MariaDB erabiltzailea
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password} # Pasahitza
+    volumes: # Bolumenak
       - etc_munge:/etc/munge
-      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf          
+      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf # slurm config muntatua  
       - var_log_slurm:/var/log/slurm
     expose:
-      - "6819"
+      - "6819" # Portu lokala
     depends_on:
       mysql:
-        condition: service_healthy
+        condition: service_healthy # MariaDB osasuntsua behar du
     networks:
       - slurm-network
     healthcheck:
-      test: ["CMD-SHELL", "pidof slurmdbd"]
+      test: ["CMD-SHELL", "pidof slurmdbd"] #  # SlurmDBD exekutatzen dela egiaztatu
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 20s
 
-  slurmctld:
-    image: slurm-docker-cluster:${SLURM_VERSION:-25.11.2}
+  slurmctld: #Slurm Control Daemon, scheduler nagusia, atazak planifikatzen eta kontrolatzen ditu.
+    image: slurm-docker-cluster:${SLURM_VERSION:-25.11.2} # Slurm kontrolatzailearen irudia
     command: ["slurmctld"]
     container_name: slurmctld
     hostname: slurmctld
     privileged: true
-    working_dir: /data
+    working_dir: /data # Lanak non egingo dituen
     environment:
       ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-}
     volumes:
       - etc_munge:/etc/munge:z
-      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf      
+      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf   # slurm config muntatua
       - slurm_jobdir:/data:z
       - var_log_slurm:/var/log/slurm:z
     expose:
-      - "6817"
+      - "6817" # Slurmctld portua
     depends_on:
       slurmdbd:
-        condition: service_healthy
+        condition: service_healthy # SlurmDBD osasuntsua behar du
     networks:
       - slurm-network
     healthcheck:
-      test: ["CMD-SHELL", "scontrol ping"]
+      test: ["CMD-SHELL", "scontrol ping"] # Martxan dagoela egiaztatzeko
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 20s
 
-  slurmrestd:
+  slurmrestd: # Slurm REST API daemon, Slurm atazak REST bidez kontrolatzeko aukera ematen du.
     image: slurm-docker-cluster:${SLURM_VERSION:-25.11.2}
     command: ["slurmrestd"]
-    container_name: slurmrestd
+    container_name: slurmrestd 
     hostname: slurmrestd
-    privileged: true
+    privileged: true # CPU/GPU eta kernel baliabideak kontrolatzeko.
     volumes:
       - etc_munge:/etc/munge
       - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf         
@@ -95,131 +95,131 @@ services:
       - "6820"
     depends_on:
       slurmctld:
-        condition: service_healthy
+        condition: service_healthy # Slurmctld osasuntsua behar du
     networks:
       - slurm-network
     healthcheck:
-      test: ["CMD-SHELL", "test -S /var/run/slurmrestd/slurmrestd.socket"]
+      test: ["CMD-SHELL", "test -S /var/run/slurmrestd/slurmrestd.socket"] # Socket existitzen dela konprobatu
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 20s
 
-  c1:
+  c1: # Nodo-langilea, Slurm atazak exekutatzen ditu CPU baliabideekin.
     image: slurm-docker-cluster:${SLURM_VERSION:-25.11.2}
     command: ["slurmd"]
     container_name: c1
     hostname: c1
-    working_dir: /data
-    privileged: true
+    working_dir: /data # Nodoan job fitxategiak gordetzeko direktorioa.
+    privileged: true # CPU/GPU eta kernel baliabideak kontrolatzeko.
     volumes:
       - etc_munge:/etc/munge
       - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf        
       - slurm_jobdir:/data
       - var_log_slurm:/var/log/slurm
     expose:
-      - "6818"
+      - "6818" # Portua
     depends_on:
       slurmctld:
-        condition: service_healthy
+        condition: service_healthy # SlurmCTLD martxan egon behar da.
     networks:
       - slurm-network
     healthcheck:
-      test: ["CMD-SHELL", "pidof slurmd"]
+      test: ["CMD-SHELL", "pidof slurmd"] # Slurmd martxan dagoela egiaztatu
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 20s
 
-  c2:
+  c2: # Nodo-langilea, Slurm atazak exekutatzen ditu CPU baliabideekin.
     image: slurm-docker-cluster:${SLURM_VERSION:-25.11.2}
     command: ["slurmd"]
     container_name: c2
     hostname: c2
-    working_dir: /data
-    privileged: true
+    working_dir: /data # Nodoan job fitxategiak gordetzeko direktorioa.
+    privileged: true # CPU/GPU eta kernel baliabideak kontrolatzeko.
     volumes:
       - etc_munge:/etc/munge
-      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf       
+      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf # Slurm konfigurazioa muntatua.  
       - slurm_jobdir:/data
       - var_log_slurm:/var/log/slurm
     expose:
-      - "6818"
+      - "6818" # Portua
     depends_on:
       slurmctld:
-        condition: service_healthy
+        condition: service_healthy # SlurmCTLD martxan egon behar da.
     networks:
       - slurm-network
     healthcheck:
-      test: ["CMD-SHELL", "pidof slurmd"]
+      test: ["CMD-SHELL", "pidof slurmd"] # Slurmd martxan dagoela konprobatzeko.
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 20s
 
-  c3:
+  c3: # Nodo-langilea, GPUarekin, CPU eta GPU atazak exekutatzeko prest.
     image: slurm-docker-cluster:${SLURM_VERSION:-25.11.2}
     command: ["slurmd"]
     container_name: c3
     hostname: c3
-    working_dir: /data
-    privileged: true
+    working_dir: /data # Nodoan job fitxategiak gordetzeko direktorioa.
+    privileged: true # CPU/GPU eta kernel baliabideak kontrolatzeko.
     volumes:
       - etc_munge:/etc/munge
-      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf   
-      - ./config/common/gres.conf:/etc/slurm/gres.conf      
+      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf   # Slurm konfigurazioa muntatua.
+      - ./config/common/gres.conf:/etc/slurm/gres.conf    # GPU baliabidea definizioa
       - slurm_jobdir:/data
       - var_log_slurm:/var/log/slurm
     expose:
-      - "6818"
+      - "6818" # Portua
     depends_on:
       slurmctld:
-        condition: service_healthy
+        condition: service_healthy # SlurmCTLD martxan egon behar da.
     networks:
       - slurm-network
     healthcheck:
-      test: ["CMD-SHELL", "pidof slurmd"]
+      test: ["CMD-SHELL", "pidof slurmd"] # Slurmd martxan dagoela konprobatzeko.
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 20s
 
-  c4:
+  c4: # Nodo-langilea, GPUarekin, memoria handiko atazak exekutatzeko prest.
     image: slurm-docker-cluster:${SLURM_VERSION:-25.11.2}
     command: ["slurmd"]
     container_name: c4
     hostname: c4
-    working_dir: /data
-    privileged: true
+    working_dir: /data # Nodoan job fitxategiak gordetzeko direktorioa.
+    privileged: true # CPU/GPU eta kernel baliabideak kontrolatzeko.
     volumes:
       - etc_munge:/etc/munge
-      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf
-      - slurm_jobdir:/data
+      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf # Slurm konfigurazioa muntatua.
+      - slurm_jobdir:/data 
       - var_log_slurm:/var/log/slurm
     expose:
-      - "6818"
+      - "6818" # Portua
     depends_on:
       slurmctld:
-        condition: service_healthy
+        condition: service_healthy # SlurmCTLD martxan egon behar da.
     networks:
       - slurm-network
     healthcheck:
-      test: ["CMD-SHELL", "pidof slurmd"]
+      test: ["CMD-SHELL", "pidof slurmd"] # Slurmd martxan dagoela konprobatzeko.
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 20s
 
-  adminer:
+  adminer: # Web interfaze MariaDB kudeatzeko, MariaDB zerbitzura konektatzen da.
     image: adminer:latest
     container_name: adminer
-    restart: always
+    restart: always # Beti berrabiarazi container-a
     ports:
-      - "8080:8080"
+      - "8080:8080"  # Internetetik atzitzeko portua
     environment:
-      ADMINER_DEFAULT_DB_DRIVER: mysql
+      ADMINER_DEFAULT_DB_DRIVER: mysql # Defektuzko DB driverra
     depends_on:
-      - mysql
+      - mysql # MariaDB behar du
     networks:
       - slurm-network
 
@@ -267,13 +267,13 @@ services:
       start_period: 60s
 
 volumes:
-  etc_munge:
-  etc_slurm:
-  slurm_jobdir:
-  var_lib_mysql:
-  var_log_slurm:
-  elasticsearch_data:
+  etc_munge: # Munge key-ak
+  etc_slurm: # Slurm config direktorioa (guk ez dugu erabiliko)
+  slurm_jobdir: # Jobs datuak
+  var_lib_mysql: # MariaDB datuak
+  var_log_slurm: # Slurm log-ak
+  elasticsearch_data: # Elasticsearch 
 
 networks:
   slurm-network:
-    driver: bridge
+    driver: bridge # Kontainer guztiak sare berean konektatzeko
