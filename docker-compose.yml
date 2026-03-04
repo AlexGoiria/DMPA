@@ -166,7 +166,8 @@ services:
     privileged: true
     volumes:
       - etc_munge:/etc/munge
-      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf         
+      - ./config/25.11/slurm.conf:/etc/slurm/slurm.conf   
+      - ./config/common/gres.conf:/etc/slurm/gres.conf      
       - slurm_jobdir:/data
       - var_log_slurm:/var/log/slurm
     expose:
